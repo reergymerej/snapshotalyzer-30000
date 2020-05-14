@@ -4,7 +4,7 @@ setup(
     name='snapshotalyzer-30000',
     version='1.0',
     author='Jeremy Greer',
-    author_email='jex.grizzle@gmail.com,
+    author_email='jex.grizzle@gmail.com',
     description='manage aws ec2 snapshots',
     packages=[
         'shotty'
