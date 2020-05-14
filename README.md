@@ -14,5 +14,6 @@ aws configure --profile shotty
 ## Run
 
 ```sh
-pipenv run python shotty/shotty.py
+pipenv run python shotty/shotty.py --help
+
 ```
