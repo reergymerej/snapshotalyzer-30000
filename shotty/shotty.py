@@ -1,13 +1,30 @@
 import boto3
 import botocore
 import click
+import sys
 
 session = boto3.Session(profile_name='shotty')
 ec2 = session.resource('ec2')
 
-@click.group()
-def cli():
+@click.group('cli')
+@click.option('--profile', default='shotty',
+              help="Specify profile for commands")
+def cli(profile):
     """Shotty manages snapshots"""
+    try:
+        print("Using profile {0}".format(profile))
+        session = boto3.Session(profile_name=profile)
+        ec2 = session.resource('ec2')
+    except botocore.exceptions.ProfileNotFound as e:
+        print(str(e))
+        sys.exit(1)
+    except:
+        print(str(sys.exc_info()[0]))
+        raise
+
+
+
+
 
 @cli.group('snapshots')
 def snapshots():
@@ -37,6 +54,10 @@ def list_snapshots(project, list_all):
     return
 
 
+
+
+
+
 @cli.group('volumes')
 def volumes():
     """Commands for volumes"""
@@ -58,6 +79,13 @@ def list_volumes(project):
                 v.encrypted and "Encrypted" or "Not Encrypted"
             )))
     return
+
+
+
+
+
+
+
 
 @cli.group('instances')
 def instances():
@@ -81,14 +109,26 @@ def has_pending_snapshot(volume):
     snapshots = list(volume.snapshots.all())
     return snapshots and snapshots[0] == 'pending'
 
+def verify_project(project, force):
+    "Check that project is set or force is used"
+    if not project and not force:
+        print("no project, stopping command - use --force to override")
+        return False
+    return True
+
 @instances.command('snapshot',
                   help="Create snapshot of all volumes")
 @click.option('--project',
               default=None,
               help="Only instances for project (tag project:<name>)")
-def create_snapshots(project):
+@click.option('--force', 'force', default=False, is_flag=True,
+              help="Allow command without specifying a project.")
+def create_snapshots(project, force):
     "Create snapshots for a project's EC2 instances"
     instances = filter_instances(project)
+
+    if not verify_project(project, force):
+        return
 
     for i in instances:
         print("Stopping {0}...".format(i.id))
@@ -133,9 +173,13 @@ def list_instances(project):
 @click.option('--project',
               default=None,
               help="Only instances for project (tag project:<name>)")
-def stop_instances(project):
+@click.option('--force', 'force', default=False, is_flag=True,
+              help="Allow command without specifying a project.")
+def stop_instances(project, force):
     "Stop EC2 instances"
 
+    if not verify_project(project, force):
+        return
     instances = filter_instances(project)
 
     for i in instances:
@@ -151,9 +195,13 @@ def stop_instances(project):
 @click.option('--project',
               default=None,
               help="Only instances for project (tag project:<name>)")
-def start_instances(project):
+@click.option('--force', 'force', default=False, is_flag=True,
+              help="Allow command without specifying a project.")
+def start_instances(project, force):
     "Start EC2 instances"
 
+    if not verify_project(project, force):
+        return
     instances = filter_instances(project)
 
     for i in instances:
@@ -165,6 +213,25 @@ def start_instances(project):
             continue
 
     return
+
+@instances.command('reboot')
+@click.option('--project',
+              default=None,
+              help="Only instances for project (tag project:<name>)")
+def reboot_instances(project):
+    "Reboot those dang EC2 instances"
+    instances = filter_instances(project)
+
+    for i in instances:
+        print("Rebooting {0}".format(i.id))
+        try:
+            i.reboot()
+        except botocore.exceptions.ClientError as e:
+            print("\tUnable to reboot {0} ".format(i.id + str(e)))
+
+
+
+
 
 if __name__ == '__main__':
     cli()
