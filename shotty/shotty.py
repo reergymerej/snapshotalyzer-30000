@@ -139,7 +139,12 @@ def create_snapshots(project, force):
             if has_pending_snapshot(v):
                 print("\tSkipping {0}, snapshot already in progress.".format(v.id))
             print("Creating snapshot of {0}".format(v.id))
-            v.create_snapshot(Description="Created by SnapshotAlyzer-30000")
+
+            try:
+                v.create_snapshot(Description="Created by SnapshotAlyzer-30000")
+            except botocor.exceptions.ClientError as e:
+                print(str(e))
+                print("Error creating snapshot")
 
         print("Starting {0}...".format(i.id))
         i.start()
